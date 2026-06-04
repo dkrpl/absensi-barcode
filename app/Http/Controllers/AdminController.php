@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ArrayExport;
 
 class AdminController extends Controller
 {
@@ -1325,9 +1328,7 @@ class AdminController extends Controller
             ];
         }
 
-        $xlsx = \Shuchkin\SimpleXLSXGen::fromArray($dataExport);
-        $xlsx->downloadAs("laporan-absensi-" . now()->format('Y-m-d') . ".xlsx");
-        exit;
+        return Excel::download(new ArrayExport($dataExport), "laporan-absensi-" . now()->format('Y-m-d') . ".xlsx");
     }
 
     /**
@@ -1422,9 +1423,7 @@ class AdminController extends Controller
             ];
         }
 
-        $xlsx = \Shuchkin\SimpleXLSXGen::fromArray($dataExport);
-        $xlsx->downloadAs("rekap-absensi-kafe-" . str_replace(' ', '-', strtolower($periode)) . ".xlsx");
-        exit;
+        return Excel::download(new ArrayExport($dataExport), "rekap-absensi-kafe-" . str_replace(' ', '-', strtolower($periode)) . ".xlsx");
     }
 
     private function getStatusLabelKafe($persentase)
