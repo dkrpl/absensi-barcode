@@ -505,15 +505,8 @@ class AdminController extends Controller
                 ->where('role', 'karyawan')
                 ->firstOrFail();
 
-            // Cek apakah karyawan memiliki data absensi
-            $hasAbsensi = \App\Models\Absensi::where('id_user', $id)->exists();
-
-            if ($hasAbsensi) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tidak dapat menghapus karyawan karena memiliki data absensi. Nonaktifkan terlebih dahulu.'
-                ], 400);
-            }
+            // Hapus data absensi terkait terlebih dahulu (Cascade Delete)
+            \App\Models\Absensi::where('id_user', $id)->delete();
 
             // Hapus foto jika ada
             if ($karyawan->foto) {
@@ -1277,75 +1270,64 @@ class AdminController extends Controller
             ->orderBy('waktu_absen', 'desc')
             ->get();
 
-        $headers = [
-            "Content-type" => "text/csv",
-            "Content-Disposition" => "attachment; filename=laporan-absensi-" . now()->format('Y-m-d') . ".csv",
-            "Pragma" => "no-cache",
-            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
-            "Expires" => "0"
+        $dataExport = [];
+        // Header
+        $dataExport[] = ['LAPORAN REKAPITULASI ABSENSI KARYAWAN KAFE'];
+        $dataExport[] = ['Periode: ' . $periode];
+        $dataExport[] = ['Catatan: Standar kehadiran 30 hari per bulan'];
+        $dataExport[] = ['Tanggal Cetak: ' . now()->translatedFormat('l, d F Y H:i:s') . ' WIB'];
+        $dataExport[] = []; // Blank line
+
+        // Header kolom
+        $dataExport[] = [
+            'No',
+            'Tanggal',
+            'Hari',
+            'Nama Karyawan',
+            'Departemen',
+            'Jabatan',
+            'Shift',
+            'Jam Mulai',
+            'Jam Absen',
+            'Status',
+            'Keterangan'
         ];
 
-        $callback = function() use ($absensi, $periode) {
-            $file = fopen('php://output', 'w');
+        $counter = 1;
+        foreach ($absensi as $item) {
+            $jamMulai = Carbon::parse($item->shift->jam_mulai);
+            $waktuAbsen = Carbon::parse($item->waktu_absen->format('H:i:s'));
+            $selisih = $waktuAbsen->diffInMinutes($jamMulai, false);
 
-            // Header dengan informasi perusahaan
-            fputcsv($file, ['LAPORAN REKAPITULASI ABSENSI KARYAWAN KAFE']);
-            fputcsv($file, ['Periode: ' . $periode]);
-            fputcsv($file, ['Catatan: Standar kehadiran 30 hari per bulan']);
-            fputcsv($file, ['Tanggal Cetak: ' . now()->translatedFormat('l, d F Y H:i:s') . ' WIB']);
-            fputcsv($file, ['']); // Blank line
-
-            // Header kolom
-            fputcsv($file, [
-                'No',
-                'Tanggal',
-                'Hari',
-                'Nama Karyawan',
-                'Departemen',
-                'Jabatan',
-                'Shift',
-                'Jam Mulai',
-                'Jam Absen',
-                'Status',
-                'Keterangan'
-            ]);
-
-            $counter = 1;
-            foreach ($absensi as $item) {
-                $jamMulai = Carbon::parse($item->shift->jam_mulai);
-                $waktuAbsen = Carbon::parse($item->waktu_absen->format('H:i:s'));
-                $selisih = $waktuAbsen->diffInMinutes($jamMulai, false);
-
-                $keterangan = '';
-                if ($item->status == 'terlambat') {
-                    $keterangan = 'Terlambat ' . abs((int)$selisih) . ' menit';
+            $keterangan = '';
+            if ($item->status == 'terlambat') {
+                $keterangan = 'Terlambat ' . abs((int)$selisih) . ' menit';
+            } else {
+                if ($selisih <= 0) {
+                    $keterangan = 'Tepat waktu';
                 } else {
-                    if ($selisih <= 0) {
-                        $keterangan = 'Tepat waktu';
-                    } else {
-                        $keterangan = 'Lebih awal ' . (int)$selisih . ' menit';
-                    }
+                    $keterangan = 'Lebih awal ' . (int)$selisih . ' menit';
                 }
-
-                fputcsv($file, [
-                    $counter++,
-                    $item->tanggal_absen->format('d/m/Y'),
-                    $item->tanggal_absen->translatedFormat('l'),
-                    $item->user->nama,
-                    $item->user->departemen ?? '-',
-                    $item->user->jabatan ?? '-',
-                    $item->shift->nama_shift,
-                    $item->shift->jam_mulai,
-                    $item->waktu_absen->format('H:i:s'),
-                    $item->status == 'hadir' ? 'Hadir' : 'Terlambat',
-                    $keterangan
-                ]);
             }
 
-            fclose($file);
-        };
+            $dataExport[] = [
+                $counter++,
+                $item->tanggal_absen->format('d/m/Y'),
+                $item->tanggal_absen->translatedFormat('l'),
+                $item->user->nama,
+                $item->user->departemen ?? '-',
+                $item->user->jabatan ?? '-',
+                $item->shift->nama_shift,
+                $item->shift->jam_mulai,
+                $item->waktu_absen->format('H:i:s'),
+                $item->status == 'hadir' ? 'Hadir' : 'Terlambat',
+                $keterangan
+            ];
+        }
 
-        return response()->stream($callback, 200, $headers);
+        $xlsx = \Shuchkin\SimpleXLSXGen::fromArray($dataExport);
+        $xlsx->downloadAs("laporan-absensi-" . now()->format('Y-m-d') . ".xlsx");
+        exit;
     }
 
     /**
@@ -1402,58 +1384,47 @@ class AdminController extends Controller
             ];
         }
 
-        $headers = [
-            "Content-type" => "text/csv",
-            "Content-Disposition" => "attachment; filename=rekap-absensi-kafe-" . str_replace(' ', '-', strtolower($periode)) . ".csv",
-            "Pragma" => "no-cache",
-            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
-            "Expires" => "0"
+        $dataExport = [];
+        // Header
+        $dataExport[] = ['REKAPITULASI ABSENSI KARYAWAN KAFE'];
+        $dataExport[] = ['Periode: ' . $periode];
+        $dataExport[] = ['Standar: 30 hari kerja per bulan'];
+        $dataExport[] = ['Tanggal Cetak: ' . now()->translatedFormat('l, d F Y H:i:s') . ' WIB'];
+        $dataExport[] = []; // Blank line
+
+        // Header kolom
+        $dataExport[] = [
+            'No',
+            'Nama Karyawan',
+            'Departemen',
+            'Jabatan',
+            'Hari Kerja',
+            'Hadir',
+            'Terlambat',
+            'Alpha',
+            'Persentase (%)',
+            'Status'
         ];
 
-        $callback = function() use ($rekapData, $periode) {
-            $file = fopen('php://output', 'w');
+        $counter = 1;
+        foreach ($rekapData as $data) {
+            $dataExport[] = [
+                $counter++,
+                $data['nama'],
+                $data['departemen'],
+                $data['jabatan'],
+                $data['hari_kerja'],
+                $data['total_hadir'],
+                $data['total_terlambat'],
+                $data['alpha'],
+                $data['persentase'] . '%',
+                $data['status']
+            ];
+        }
 
-            // Header
-            fputcsv($file, ['REKAPITULASI ABSENSI KARYAWAN KAFE']);
-            fputcsv($file, ['Periode: ' . $periode]);
-            fputcsv($file, ['Standar: 30 hari kerja per bulan']);
-            fputcsv($file, ['Tanggal Cetak: ' . now()->translatedFormat('l, d F Y H:i:s') . ' WIB']);
-            fputcsv($file, ['']); // Blank line
-
-            // Header kolom
-            fputcsv($file, [
-                'No',
-                'Nama Karyawan',
-                'Departemen',
-                'Jabatan',
-                'Hari Kerja',
-                'Hadir',
-                'Terlambat',
-                'Alpha',
-                'Persentase (%)',
-                'Status'
-            ]);
-
-            $counter = 1;
-            foreach ($rekapData as $data) {
-                fputcsv($file, [
-                    $counter++,
-                    $data['nama'],
-                    $data['departemen'],
-                    $data['jabatan'],
-                    $data['hari_kerja'],
-                    $data['total_hadir'],
-                    $data['total_terlambat'],
-                    $data['alpha'],
-                    $data['persentase'] . '%',
-                    $data['status']
-                ]);
-            }
-
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        $xlsx = \Shuchkin\SimpleXLSXGen::fromArray($dataExport);
+        $xlsx->downloadAs("rekap-absensi-kafe-" . str_replace(' ', '-', strtolower($periode)) . ".xlsx");
+        exit;
     }
 
     private function getStatusLabelKafe($persentase)

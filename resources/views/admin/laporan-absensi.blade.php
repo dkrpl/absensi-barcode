@@ -9,7 +9,7 @@
                 <i class="fas fa-chart-bar"></i> Rekap Bulanan
             </button>
             <button onclick="exportLaporan()" class="btn btn-success">
-                <i class="fas fa-file-excel"></i> Export CSV
+                <i class="fas fa-file-excel"></i> Export XLSX
             </button>
         </div>
     </div>
@@ -227,6 +227,9 @@
                                 <button type="submit" class="btn btn-primary btn-block me-2">
                                     <i class="fas fa-filter"></i> Terapkan Filter
                                 </button>
+                                <button type="button" class="btn btn-info ms-2" onclick="exportRekapBulanan()">
+                        <i class="fas fa-file-excel"></i> Export XLSX
+                    </button>
                                 <a href="{{ route('admin.laporan-absensi') }}" class="btn btn-secondary">
                                     <i class="fas fa-redo"></i> Reset
                                 </a>

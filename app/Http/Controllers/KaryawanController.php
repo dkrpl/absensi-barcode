@@ -133,7 +133,7 @@ class KaryawanController extends Controller
     $jamSekarang = $now;
     $jamTarget = today()->setTimeFrom($jamMasuk);
 
-    $menitTerlambat = $jamSekarang->diffInMinutes($jamTarget, false);
+    $menitTerlambat = (int) round($jamSekarang->diffInMinutes($jamTarget, false));
 
     // LOGIKA BARU: Sesuai dengan AdminController
     // Jika absen sebelum atau pada jam masuk: HADIR
