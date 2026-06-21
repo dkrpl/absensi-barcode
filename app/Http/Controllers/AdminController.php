@@ -772,7 +772,52 @@ class AdminController extends Controller
     public function showBarcode($id)
     {
         $barcode = Barcode::with('shift')->findOrFail($id);
-        return view('admin.barcode-display', compact('barcode'));
+        
+        $payload = json_encode([
+            'kode_barcode' => $barcode->kode_barcode,
+            'expires_at' => now()->addMinutes(1)->timestamp
+        ]);
+        $dynamicToken = \Illuminate\Support\Facades\Crypt::encryptString($payload);
+
+        return view('admin.barcode-display', compact('barcode', 'dynamicToken'));
+    }
+
+    /**
+     * Get dynamic token for barcode
+     */
+    public function getBarcodeToken($id)
+    {
+        try {
+            $barcode = Barcode::findOrFail($id);
+            
+            if (!$barcode->isActive()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Barcode tidak aktif'
+                ], 400);
+            }
+
+            // Generate dynamic token valid for 1 minute
+            $payload = json_encode([
+                'kode_barcode' => $barcode->kode_barcode,
+                'expires_at' => now()->addMinutes(1)->timestamp
+            ]);
+            
+            // We use Crypt facade, need to make sure it's imported at top
+            $dynamicToken = \Illuminate\Support\Facades\Crypt::encryptString($payload);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'dynamic_token' => $dynamicToken
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     // LAPORAN ABSENSI PROFESIONAL - FLEKSIBEL UNTUK SEMUA TAHUN

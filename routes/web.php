@@ -38,6 +38,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/generate-barcode', [AdminController::class, 'showGenerateBarcode'])->name('admin.generate-barcode');
     Route::post('/generate-barcode', [AdminController::class, 'generateBarcode'])->name('admin.generate-barcode.post');
     Route::get('/barcode-display/{id}', [AdminController::class, 'showBarcode'])->name('admin.barcode-display');
+    Route::get('/api/barcode/{id}/token', [AdminController::class, 'getBarcodeToken'])->name('admin.barcode-token');
 
     // Laporan
     Route::get('/laporan-absensi', [AdminController::class, 'laporanAbsensi'])->name('admin.laporan-absensi');

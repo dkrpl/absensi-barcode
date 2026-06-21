@@ -62,6 +62,36 @@ class KaryawanController extends Controller
 
     $kode = $request->kode_barcode;
 
+    // Decrypt the token
+    try {
+        $decrypted = \Illuminate\Support\Facades\Crypt::decryptString($kode);
+        $payload = json_decode($decrypted, true);
+        
+        if (isset($payload['expires_at']) && time() > $payload['expires_at']) {
+            Log::warning('QR Code expired (dynamic token)', ['payload' => $payload]);
+            return response()->json([
+                'success' => false,
+                'message' => 'QR Code sudah kadaluarsa (berubah). Silakan scan QR Code terbaru di layar.'
+            ], 400);
+        }
+        
+        if (isset($payload['kode_barcode'])) {
+            $kode = $payload['kode_barcode'];
+        } else {
+            throw new \Exception('Invalid payload structure');
+        }
+    } catch (\Exception $e) {
+        // Fallback untuk backward compatibility jika QR Code statis (lama)
+        // atau lempar error jika ingin enforce token dinamis
+        Log::warning('Gagal decrypt token QR, menggunakan raw kode', [
+            'error' => $e->getMessage(),
+            'kode' => $kode
+        ]);
+        
+        // Uncomment baris di bawah ini jika ingin menolak QR statis (lama)
+        // return response()->json(['success' => false, 'message' => 'QR Code tidak valid atau format salah.'], 400);
+    }
+
     // Cari barcode yang aktif
     $barcode = Barcode::where('kode_barcode', $kode)
         ->where('status', 'aktif')

@@ -100,6 +100,15 @@ class DatabaseSeeder extends Seeder
 
         // Generate Active Barcodes untuk setiap shift
         $shifts = Shift::all();
+
+        // Mengubah shift Pagi (ID 1) jam mulainya menjadi 07:30 sesuai permintaan
+        $shiftPagi = $shifts->firstWhere('id', 1);
+        if ($shiftPagi) {
+            $shiftPagi->jam_mulai = '07:30:00';
+            $shiftPagi->jam_akhir = '15:30:00'; // Sesuaikan jam pulang juga (8 jam)
+            $shiftPagi->save();
+        }
+
         $barcodes = [];
         $now = now();
         foreach ($shifts as $shift) {

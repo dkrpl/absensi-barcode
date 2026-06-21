@@ -807,9 +807,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize based on server data
             @if($activeBarcode)
-                generateQRCode('{{ $activeBarcode->kode_barcode }}');
+                generateQRCode('{{ $dynamicToken }}');
                 startCountdown('{{ $activeBarcode->waktu_akhir->format("Y-m-d H:i:s") }}');
-                currentQR = '{{ $activeBarcode->kode_barcode }}';
+                currentQR = '{{ $dynamicToken }}';
             @elseif($currentShift)
                 @php
                     $shiftStart = \Carbon\Carbon::parse($currentShift->jam_mulai);
@@ -1095,39 +1095,37 @@
                     }
 
                     if (data.success) {
-                        // New QR code detected
-                        if (currentQR !== data.data.kode_barcode) {
-                            currentQR = data.data.kode_barcode;
+                        // Always update QR because dynamic_token changes continuously
+                        currentQR = data.data.dynamic_token;
 
-                            // Update QR display
-                            generateQRCode(data.data.kode_barcode);
+                        // Update QR display
+                        generateQRCode(data.data.dynamic_token);
 
-                            // Update countdown
-                            startCountdown(data.data.waktu_akhir);
+                        // Update countdown
+                        startCountdown(data.data.waktu_akhir);
 
-                            // Update status badge
-                            const statusBadge = document.getElementById('statusBadge');
-                            if (statusBadge) {
-                                statusBadge.className = 'status-badge status-active';
-                                statusBadge.innerHTML = `
-                                    <i class="fas fa-check-circle"></i>QR AKTIF
-                                `;
-                            }
+                        // Update status badge
+                        const statusBadge = document.getElementById('statusBadge');
+                        if (statusBadge) {
+                            statusBadge.className = 'status-badge status-active';
+                            statusBadge.innerHTML = `
+                                <i class="fas fa-check-circle"></i>QR AKTIF
+                            `;
+                        }
 
-                            // Update stats
-                            const activeQRElement = document.getElementById('activeQR');
-                            if (activeQRElement) {
-                                activeQRElement.textContent = '1';
-                            }
+                        // Update stats
+                        const activeQRElement = document.getElementById('activeQR');
+                        if (activeQRElement) {
+                            activeQRElement.textContent = '1';
+                        }
 
-                            // Update connection status
-                            const connectionElement = document.getElementById('connectionStatus');
-                            if (connectionElement) {
-                                connectionElement.innerHTML = `
-                                    <i class="fas fa-circle text-green-500"></i>
-                                    <span class="text-green-600 font-medium">Online</span>
-                                `;
-                            }
+                        // Update connection status
+                        const connectionElement = document.getElementById('connectionStatus');
+                        if (connectionElement) {
+                            connectionElement.innerHTML = `
+                                <i class="fas fa-circle text-green-500"></i>
+                                <span class="text-green-600 font-medium">Online</span>
+                            `;
                         }
                     } else {
                         // No active QR

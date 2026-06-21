@@ -6,6 +6,7 @@ use App\Models\Barcode;
 use App\Models\Shift;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Crypt;
 
 class PublicController extends Controller
 {
@@ -60,7 +61,16 @@ class PublicController extends Controller
         // Get all shifts for info
         $shifts = Shift::orderBy('jam_mulai')->get();
 
-        return view('public.qr-display', compact('activeBarcode', 'currentShift', 'shifts'));
+        $dynamicToken = null;
+        if ($activeBarcode) {
+            $payload = json_encode([
+                'kode_barcode' => $activeBarcode->kode_barcode,
+                'expires_at' => now()->addMinutes(1)->timestamp
+            ]);
+            $dynamicToken = Crypt::encryptString($payload);
+        }
+
+        return view('public.qr-display', compact('activeBarcode', 'currentShift', 'shifts', 'dynamicToken'));
     }
 
     /**
@@ -86,6 +96,13 @@ class PublicController extends Controller
         $expiryTime = Carbon::parse($activeBarcode->waktu_akhir);
         $remainingSeconds = $now->diffInSeconds($expiryTime, false);
 
+        // Generate dynamic token
+        $payload = json_encode([
+            'kode_barcode' => $activeBarcode->kode_barcode,
+            'expires_at' => now()->addMinutes(1)->timestamp
+        ]);
+        $dynamicToken = Crypt::encryptString($payload);
+
         // Format untuk response
         return response()->json([
             'success' => true,
@@ -93,6 +110,7 @@ class PublicController extends Controller
             'data' => [
                 'id' => $activeBarcode->id,
                 'kode_barcode' => $activeBarcode->kode_barcode,
+                'dynamic_token' => $dynamicToken,
                 'waktu_mulai' => $activeBarcode->waktu_mulai->format('H:i:s'),
                 'waktu_akhir' => $activeBarcode->waktu_akhir->format('H:i:s'),
                 'remaining_seconds' => max(0, $remainingSeconds),

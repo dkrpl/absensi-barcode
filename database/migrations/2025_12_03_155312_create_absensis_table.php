@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
             $table->foreignId('id_shift')->constrained('shifts')->onDelete('cascade');
-            $table->foreignId('id_barcode')->constrained('barcodes')->onDelete('cascade');
+            $table->foreignId('id_barcode')->nullable()->constrained('barcodes')->nullOnDelete();
             $table->date('tanggal_absen');
             $table->dateTime('waktu_absen');
             $table->enum('status', ['hadir', 'terlambat']);

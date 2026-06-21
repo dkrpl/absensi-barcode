@@ -122,8 +122,8 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script>
 $(document).ready(function() {
-    // Generate QR Code
-    generateQRCode('{{ $barcode->kode_barcode }}');
+    // Generate QR Code with dynamic token
+    generateQRCode('{{ $dynamicToken }}');
 
     // Start countdown
     startCountdown();
@@ -307,7 +307,7 @@ function printQRCode() {
             <script>
                 // Generate QR Code for print
                 var qr = qrcode(0, 'M');
-                qr.addData('{{ $barcode->kode_barcode }}');
+                qr.addData('{{ $dynamicToken }}');
                 qr.make();
                 document.getElementById('printQr').innerHTML = '<img src="' + qr.createDataURL(10, 0) + '" style="max-width: 300px;">';
 
@@ -326,12 +326,23 @@ function refreshPage() {
     window.location.reload();
 }
 
-// Auto refresh every 30 seconds to update countdown
+// Auto refresh dynamic token every 30 seconds
 setInterval(function() {
     var distance = new Date('{{ $barcode->waktu_akhir }}').getTime() - new Date().getTime();
     if (distance > 0) {
-        // Only refresh if still active
-        location.reload();
+        // Fetch new token
+        $.ajax({
+            url: '/api/barcode/{{ $barcode->id }}/token',
+            type: 'GET',
+            success: function(response) {
+                if (response.success) {
+                    generateQRCode(response.data.dynamic_token);
+                }
+            },
+            error: function(xhr) {
+                console.error("Gagal mendapatkan token QR baru");
+            }
+        });
     }
 }, 30000);
 </script>
