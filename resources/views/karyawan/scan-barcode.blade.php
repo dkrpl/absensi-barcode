@@ -44,7 +44,7 @@
                             </h6>
                             <p class="card-text">Jika scanner tidak bekerja, masukkan kode QR manual:</p>
                             <div class="input-group">
-                                <input type="text" id="manualCode" class="form-control" placeholder="Masukkan kode QR (format UUID)">
+                                <input type="text" id="manualCode" class="form-control" placeholder="Masukkan kode QR">
                                 <div class="input-group-append">
                                     <button class="btn btn-warning" onclick="submitManualCode()">
                                         Submit
@@ -298,10 +298,9 @@ function processQRCode(code) {
         scannerElement.style.pointerEvents = 'none';
     }
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(code)) {
-        console.error('Invalid UUID format:', code);
+    // Validate QR code format (basic check to ensure it's not empty)
+    if (!code || code.trim() === '') {
+        console.error('Empty QR code:', code);
         showErrorAlert('Format QR Code tidak valid', 'Pastikan Anda scan QR Code yang benar dari sistem absensi.');
         $('#loading').hide();
 

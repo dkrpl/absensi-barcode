@@ -42,7 +42,7 @@ class KaryawanController extends Controller
     ]);
 
     $request->validate([
-        'kode_barcode' => 'required|uuid'
+        'kode_barcode' => 'required|string'
     ]);
 
     // Rate limiting based on user ID
